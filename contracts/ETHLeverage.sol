@@ -7,9 +7,9 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "./interfaces/ICEther.sol";
 import "./interfaces/ICERC20.sol";
+import "./interfaces/IWETH.sol";
 import "./interfaces/IComptroller.sol";
 import "./interfaces/IPriceFeed.sol";
-import "./interfaces/IUniswapV2Router01.sol";
 import "hardhat/console.sol";
 
 /**
@@ -28,7 +28,7 @@ contract ETHLeverage {
       ICEther internal cEther;
       ICERC20 internal cDAI;
       IERC20 internal DAI;
-      address internal WETH;
+      IWETH internal WETH;
       IComptroller internal comptroller;
       ISwapRouter internal swapRouter;
       AggregatorV3Interface internal ethUsdPriceFeed;
@@ -39,6 +39,8 @@ contract ETHLeverage {
        * @param _userAddress The address of the user
        * @param _cEtherAddress The address of the cEther token
        * @param _cDaiAddress The address of the cDAI token
+       * @param _daiAddress The address of the DAI token
+       * @param _WETHAddress The address of the WETH token
        * @param _comptrollerAddress The address of the comptroller
        * @param _swapRouterAddress The address of uniswapv2 based router
        * @param _ethUsdPriceFeedAddress The address of the pricefeed (Chainlink Oracle: ETH/USD)
@@ -49,7 +51,7 @@ contract ETHLeverage {
             address _cEtherAddress,
             address _cDaiAddress,
             address _daiAddress,
-            address _WETH,
+            address _WETHAddress,
             address _comptrollerAddress,
             address _swapRouterAddress,
             address _ethUsdPriceFeedAddress,
@@ -59,11 +61,21 @@ contract ETHLeverage {
             cEther = ICEther(_cEtherAddress);
             cDAI = ICERC20(_cDaiAddress);
             DAI = IERC20(_daiAddress);
-            WETH = _WETH;
+            WETH = IWETH(_WETHAddress);
             comptroller = IComptroller(_comptrollerAddress);
             swapRouter = ISwapRouter(_swapRouterAddress);
             ethUsdPriceFeed = AggregatorV3Interface(_ethUsdPriceFeedAddress);
             daiUsdPriceFeed = AggregatorV3Interface(_daiUsdPriceFeedAddress);
+      }
+
+      /**
+       * @notice TransferETH from the contract to user
+       * @param to receipient's address
+       * @param value ETH value in wei
+       */
+      function safeTransferETH(address to, uint256 value) internal {
+            (bool success, ) = to.call{value: value}(new bytes(0));
+            require(success, "ETH transfer failed");
       }
 
       /**
@@ -114,27 +126,13 @@ contract ETHLeverage {
             require(status == 0, "Failed to borrow DAI");
 
             /**
-             * @notice Swap the borrowed DAI to ETH
+             * @notice Approve DAI token to swaprouter and swap the borrowed DAI to WETH
              */
             DAI.safeApprove(address(swapRouter), daiBorrowAmountInWei);
 
-            // address[] memory tokenPath = new address[](2);
-            // tokenPath[0] = address(DAI);
-            // tokenPath[1] = dexRouter.WETH();
-            // uint256 deadline = block.timestamp + 120;
-            // uint256[] memory swapAmounts = dexRouter.swapTokensForExactETH(
-            //       (msg.value * (_leverageRatio - hundredPercent)) / hundredPercent,
-            //       daiBorrowAmountInWei,
-            //       tokenPath,
-            //       address(msg.sender),
-            //       deadline
-            // );
-            // console.log(swapAmounts[0], swapAmounts[1]);
-            console.log("BF Bal: %s", address(this).balance);
-
             ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
                   tokenIn: address(DAI),
-                  tokenOut: WETH,
+                  tokenOut: address(WETH),
                   fee: 3000,
                   recipient: address(this),
                   deadline: block.timestamp,
@@ -142,11 +140,14 @@ contract ETHLeverage {
                   amountInMaximum: daiBorrowAmountInWei,
                   sqrtPriceLimitX96: 0
             });
+            swapRouter.exactOutputSingle(params);
 
-            uint256 amountIn = swapRouter.exactOutputSingle(params);
-            console.log("DAI Used: %s", amountIn / 10**18);
+            /**
+             * @notice Unwrap WETH and transfer extra ETH to user
+             */
+            WETH.withdraw(WETH.balanceOf(address(this)));
+            safeTransferETH(userAddress, address(this).balance);
 
-            console.log("AF Bal: %s", address(this).balance);
             /**
              * @notice Repay the remaining dai to compound if there are any dai left
              */

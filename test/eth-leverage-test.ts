@@ -50,30 +50,11 @@ describe.only("ETHLeverage Contract Test", function () {
 
       describe("Open Position", function () {
             it("Should let the user open their leverage position correctly", async function () {
-                  // console.log(await owner.getBalance());
-                  const bfBal = await user.getBalance();
-                  console.log(ethers.utils.formatEther(bfBal.toString()));
-
-                  // console.log(await cEtherToken.balanceOf(ethLeverage.address));
-                  // console.log(await owner.getAddress());
-                  // const res = await ethLeverage.connect(user).callStatic.openPosition(1500, {
-                  //       value: ethers.utils.parseEther("0.01"),
-                  // });
-                  // console.log(res);
-                  // console.log(await daiToken.balanceOf(ethLeverage.address));
-                  await ethLeverage.connect(user).openPosition(150 * 1000, {
-                        value: ethers.utils.parseEther("4"),
-                  });
-
-                  // console.log(await user.getBalance());
-                  // console.log(await cEtherToken.balanceOf(ethLeverage.address));
-                  // const daiContractBalance = await daiToken.balanceOf(ethLeverage.address);
-                  // const daiBalInEthers = ethers.utils.formatEther(daiContractBalance.toString());
-                  // console.log(daiBalInEthers);
-                  const afBal = await user.getBalance();
-                  console.log(ethers.utils.formatEther(afBal.toString()));
+                  await expect(() =>
+                        ethLeverage.connect(user).openPosition(150 * 1000, {
+                              value: ethers.utils.parseEther("4"),
+                        }),
+                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2"));
             });
-            // console.log(owner.getBalance());
-            // console.log((await owner.getAddress()));
       });
 });
