@@ -13,8 +13,9 @@ describe.only("ETHLeverage Contract Test", function () {
             CETHER_ADDRESS,
             CDAI_ADDRESS,
             DAI_ADDRESS,
+            WETH_ADDRESS,
             COMPTROLLER_ADDRESS,
-            DEX_ROUTER_ADDRESS,
+            SWAP_ROUTER_ADDRESS,
             ETHUSD_PRICEFEED_ADDRESS,
             DAIUSD_PRICEFEED_ADDRESS,
       } = KOVAN_NETWORK_CONSTANT;
@@ -38,8 +39,9 @@ describe.only("ETHLeverage Contract Test", function () {
                   CETHER_ADDRESS,
                   CDAI_ADDRESS,
                   DAI_ADDRESS,
+                  WETH_ADDRESS,
                   COMPTROLLER_ADDRESS,
-                  DEX_ROUTER_ADDRESS,
+                  SWAP_ROUTER_ADDRESS,
                   ETHUSD_PRICEFEED_ADDRESS,
                   DAIUSD_PRICEFEED_ADDRESS,
             );
@@ -60,7 +62,7 @@ describe.only("ETHLeverage Contract Test", function () {
                   // console.log(res);
                   // console.log(await daiToken.balanceOf(ethLeverage.address));
                   await ethLeverage.connect(user).openPosition(150 * 1000, {
-                        value: ethers.utils.parseEther("1"),
+                        value: ethers.utils.parseEther("4"),
                   });
 
                   // console.log(await user.getBalance());

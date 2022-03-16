@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "./interfaces/ICEther.sol";
 import "./interfaces/ICERC20.sol";
 import "./interfaces/IComptroller.sol";
@@ -27,8 +28,9 @@ contract ETHLeverage {
       ICEther internal cEther;
       ICERC20 internal cDAI;
       IERC20 internal DAI;
+      address internal WETH;
       IComptroller internal comptroller;
-      IUniswapV2Router01 internal dexRouter;
+      ISwapRouter internal swapRouter;
       AggregatorV3Interface internal ethUsdPriceFeed;
       AggregatorV3Interface internal daiUsdPriceFeed;
 
@@ -38,7 +40,7 @@ contract ETHLeverage {
        * @param _cEtherAddress The address of the cEther token
        * @param _cDaiAddress The address of the cDAI token
        * @param _comptrollerAddress The address of the comptroller
-       * @param _dexRouterAddress The address of uniswapv2 based router
+       * @param _swapRouterAddress The address of uniswapv2 based router
        * @param _ethUsdPriceFeedAddress The address of the pricefeed (Chainlink Oracle: ETH/USD)
        * @param _daiUsdPriceFeedAddress The address of the pricefeed (Chainlink Oracle: DAI/USD)
        */
@@ -47,8 +49,9 @@ contract ETHLeverage {
             address _cEtherAddress,
             address _cDaiAddress,
             address _daiAddress,
+            address _WETH,
             address _comptrollerAddress,
-            address _dexRouterAddress,
+            address _swapRouterAddress,
             address _ethUsdPriceFeedAddress,
             address _daiUsdPriceFeedAddress
       ) {
@@ -56,8 +59,9 @@ contract ETHLeverage {
             cEther = ICEther(_cEtherAddress);
             cDAI = ICERC20(_cDaiAddress);
             DAI = IERC20(_daiAddress);
+            WETH = _WETH;
             comptroller = IComptroller(_comptrollerAddress);
-            dexRouter = IUniswapV2Router01(_dexRouterAddress);
+            swapRouter = ISwapRouter(_swapRouterAddress);
             ethUsdPriceFeed = AggregatorV3Interface(_ethUsdPriceFeedAddress);
             daiUsdPriceFeed = AggregatorV3Interface(_daiUsdPriceFeedAddress);
       }
@@ -106,33 +110,51 @@ contract ETHLeverage {
             uint256 daiBorrowAmountInWei = (msg.value * (_leverageRatio + marginError - hundredPercent) * ethDaiRate) /
                   hundredPercent;
             uint256 status = cDAI.borrow(daiBorrowAmountInWei);
-            console.log(daiBorrowAmountInWei / 10**18);
-            console.log(status);
+            console.log("Borrowed : %s", daiBorrowAmountInWei / 10**18);
             require(status == 0, "Failed to borrow DAI");
 
             /**
              * @notice Swap the borrowed DAI to ETH
              */
-            DAI.safeApprove(address(dexRouter), daiBorrowAmountInWei);
-            address[] memory tokenPath = new address[](2);
-            tokenPath[0] = address(DAI);
-            tokenPath[1] = dexRouter.WETH();
-            uint256 deadline = block.timestamp + 120;
-            uint256[] memory swapAmounts = dexRouter.swapTokensForExactETH(
-                  (msg.value * (_leverageRatio - hundredPercent)) / hundredPercent, // (the correct code should be msg.value/2 but since the eth price is less than the actual price by (10x) (based on kovan testnet), therefore the amount of eth we can swap from dai is less tha n the actuaal value by 10x)
-                  daiBorrowAmountInWei,
-                  tokenPath,
-                  address(msg.sender),
-                  deadline
-            );
-            console.log(swapAmounts[0], swapAmounts[1]);
+            DAI.safeApprove(address(swapRouter), daiBorrowAmountInWei);
 
+            // address[] memory tokenPath = new address[](2);
+            // tokenPath[0] = address(DAI);
+            // tokenPath[1] = dexRouter.WETH();
+            // uint256 deadline = block.timestamp + 120;
+            // uint256[] memory swapAmounts = dexRouter.swapTokensForExactETH(
+            //       (msg.value * (_leverageRatio - hundredPercent)) / hundredPercent,
+            //       daiBorrowAmountInWei,
+            //       tokenPath,
+            //       address(msg.sender),
+            //       deadline
+            // );
+            // console.log(swapAmounts[0], swapAmounts[1]);
+            console.log("BF Bal: %s", address(this).balance);
+
+            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+                  tokenIn: address(DAI),
+                  tokenOut: WETH,
+                  fee: 3000,
+                  recipient: address(this),
+                  deadline: block.timestamp,
+                  amountOut: (msg.value * (_leverageRatio - hundredPercent)) / hundredPercent,
+                  amountInMaximum: daiBorrowAmountInWei,
+                  sqrtPriceLimitX96: 0
+            });
+
+            uint256 amountIn = swapRouter.exactOutputSingle(params);
+            console.log("DAI Used: %s", amountIn / 10**18);
+
+            console.log("AF Bal: %s", address(this).balance);
             /**
-             * @notice Repay the remaining dai to compound
+             * @notice Repay the remaining dai to compound if there are any dai left
              */
-            DAI.safeApprove(address(cDAI), DAI.balanceOf(address(this)));
-            uint256 repayStatus = cDAI.repayBorrow(DAI.balanceOf(address(this)));
-            require(repayStatus == 0, "Failed to repay DAI.");
+            if (DAI.balanceOf(address(this)) > 0) {
+                  DAI.safeApprove(address(cDAI), DAI.balanceOf(address(this)));
+                  uint256 repayStatus = cDAI.repayBorrow(DAI.balanceOf(address(this)));
+                  require(repayStatus == 0, "Failed to repay DAI.");
+            }
       }
 
       /**
