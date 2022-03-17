@@ -13,4 +13,10 @@ interface IWETH is IERC20 {
        * @param wad WETH Amount
        */
       function withdraw(uint256 wad) external;
+
+      /**
+       * @notice Wrap ETH to WETH
+       * @dev Specify the amount via msg.value
+       */
+      function deposit() external payable;
 }

@@ -19,4 +19,11 @@ interface ICERC20 {
        * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
        */
       function repayBorrow(uint256 repayAmount) external returns (uint256);
+
+      /**
+       * @notice Accrue interest to updated borrowIndex and then calculate account's borrow balance using the updated borrowIndex
+       * @param account The address whose balance should be calculated after updating borrowIndex
+       * @return The calculated balance
+       */
+      function borrowBalanceCurrent(address account) external returns (uint256);
 }

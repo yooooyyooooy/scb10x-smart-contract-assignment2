@@ -159,6 +159,39 @@ contract ETHLeverage {
       }
 
       /**
+       * @notice Close leverage position of the user
+       */
+      function closePosition() public {
+            /**
+             * @notice Get the borrow balance of the user interacting with the contract
+             * @dev Reverts if user's DAI balance is insufficient
+             */
+            uint256 borrowBalance = cDAI.borrowBalanceCurrent(address(this));
+            console.log(borrowBalance / 10**18);
+            require(DAI.balanceOf(msg.sender) > borrowBalance, "Insufficient amount of DAI in the wallet");
+
+            /**
+		@notice Transfer DAI from user to this contract and repay the borrowed DAI
+		 */
+            DAI.safeTransferFrom(msg.sender, address(this), borrowBalance);
+            DAI.approve(address(cDAI), borrowBalance);
+            uint256 repayStatus = cDAI.repayBorrow(borrowBalance);
+            require(repayStatus == 0, "Failed to repay DAI.");
+
+            /**
+             * @notice Redeem the collateral ETH
+             */
+            uint256 cETHBalance = cEther.balanceOf(address(this));
+            uint256 redeemStatus = cEther.redeem(cETHBalance);
+            require(redeemStatus == 0, "Failed to redeemm ETH");
+
+            /**
+             * @notice Transfer ETH back to the user
+             */
+            safeTransferETH(msg.sender, address(this).balance);
+      }
+
+      /**
        * @dev Function to receive Ether. msg.data must be empty
        */
       receive() external payable {}
