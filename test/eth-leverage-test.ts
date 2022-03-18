@@ -45,7 +45,7 @@ describe("ETHLeverage Contract Test", function () {
             );
 
             ETHLeverage = await ethers.getContractFactory("ETHLeverage");
-            ethLeverage = await ETHLeverage.connect(owner).deploy(
+            ethLeverage = await ETHLeverage.connect(user).deploy(
                   user.address,
                   CETHER_ADDRESS,
                   CDAI_ADDRESS,
