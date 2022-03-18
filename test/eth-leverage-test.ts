@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import KOVAN_NETWORK_CONSTANT from "../constants/kovan";
+
 /**
  * @file Unit testing for ETHLeverge.sol
  * @author Ratchanon Wattanataweekul
@@ -65,6 +66,12 @@ describe("ETHLeverage Contract Test", function () {
                               value: ethers.utils.parseEther("4"),
                         }),
                   ).to.changeEtherBalance(user, ethers.utils.parseEther("-2"));
+            });
+      });
+      describe("Querying Position", function () {
+            it("Should let the user query their leverage position correctly", async function () {
+                  const results = await ethLeverage.connect(user).callStatic.queryPosition();
+                  expect(parseInt(results.leverageLevel)).to.equal(50000);
             });
       });
       describe("Close Position", function () {

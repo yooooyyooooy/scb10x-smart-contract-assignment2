@@ -23,6 +23,7 @@ contract ETHLeverage {
 
       uint256 private hundredPercent = 100 * 1000;
       uint256 private marginError = 5 * 1000;
+      uint256 private leverageLevel;
 
       address private userAddress;
       ICEther internal cEther;
@@ -33,6 +34,16 @@ contract ETHLeverage {
       ISwapRouter internal swapRouter;
       AggregatorV3Interface internal ethUsdPriceFeed;
       AggregatorV3Interface internal daiUsdPriceFeed;
+
+      /**
+       * @dev A struct for queryPosition result
+       */
+      struct queryPositionResult {
+            uint256 ethDepositAmount;
+            uint256 daiBorrowedAmount;
+            uint256 ethDaiRate;
+            uint256 leverageLevel;
+      }
 
       /**
        * @notice Construct a new ETHLeverage contract
@@ -78,6 +89,25 @@ contract ETHLeverage {
             require(success, "ETH transfer failed");
       }
 
+      function getEthDaiRate() internal view returns (uint256) {
+            /**
+             * @notice Get ETH/USD Rates fron chainlink oracles
+             * @return ETH/USD Rates with 8 decimal units
+             */
+            (, int256 ethUsdPrice, , , ) = ethUsdPriceFeed.latestRoundData();
+
+            /**
+             * @notice Get DAI/USD Rates fron chainlink oracles
+             * @return DAI/USD Rates with 8 decimal units
+             */
+            (, int256 daiUsdPrice, , , ) = daiUsdPriceFeed.latestRoundData();
+            /**
+             * @notice Calculate ETH/DAI Rates
+             */
+            uint256 ethDaiRate = uint256(ethUsdPrice) / uint256(daiUsdPrice);
+            return ethDaiRate;
+      }
+
       /**
        * @notice Open leverage position of the user
        * @param _leverageRatio The leverage Ratio that the user preferred
@@ -97,23 +127,7 @@ contract ETHLeverage {
             uint256[] memory errors = comptroller.enterMarkets(cETHAdress);
             require(errors[0] == 0, "Cannot enter the market.");
 
-            /**
-             * @notice Get ETH/USD Rates fron chainlink oracles
-             * @return ETH/USD Rates with 8 decimal units
-             */
-            (, int256 ethUsdPrice, , , ) = ethUsdPriceFeed.latestRoundData();
-
-            /**
-             * @notice Get DAI/USD Rates fron chainlink oracles
-             * @return DAI/USD Rates with 8 decimal units
-             */
-            (, int256 daiUsdPrice, , , ) = daiUsdPriceFeed.latestRoundData();
-
-            /**
-             * @notice Calculate ETH/DAI Rates
-             */
-            uint256 ethDaiRate = uint256(ethUsdPrice) / uint256(daiUsdPrice);
-            console.log("Rate: %s", ethDaiRate);
+            uint256 ethDaiRate = getEthDaiRate();
 
             /**
              * @notice Borrow DAI based on the user's leveragae ratio
@@ -122,7 +136,6 @@ contract ETHLeverage {
             uint256 daiBorrowAmountInWei = (msg.value * (_leverageRatio + marginError - hundredPercent) * ethDaiRate) /
                   hundredPercent;
             uint256 status = cDAI.borrow(daiBorrowAmountInWei);
-            console.log("Borrowed : %s", daiBorrowAmountInWei / 10**18);
             require(status == 0, "Failed to borrow DAI");
 
             /**
@@ -141,6 +154,8 @@ contract ETHLeverage {
                   sqrtPriceLimitX96: 0
             });
             swapRouter.exactOutputSingle(params);
+
+            leverageLevel = _leverageRatio - hundredPercent;
 
             /**
              * @notice Unwrap WETH and transfer extra ETH to user
@@ -167,7 +182,6 @@ contract ETHLeverage {
              * @dev Reverts if user's DAI balance is insufficient
              */
             uint256 borrowBalance = cDAI.borrowBalanceCurrent(address(this));
-            console.log(borrowBalance / 10**18);
             require(DAI.balanceOf(msg.sender) > borrowBalance, "Insufficient amount of DAI in the wallet");
 
             /**
@@ -189,6 +203,23 @@ contract ETHLeverage {
              * @notice Transfer ETH back to the user
              */
             safeTransferETH(msg.sender, address(this).balance);
+      }
+
+      /**
+       * @notice Function to querying current position of the user
+       * @return A struct type queryPositionResult
+       */
+      function queryPosition() public returns (queryPositionResult memory) {
+            uint256 ethDepositAmount = cEther.balanceOfUnderlying(address(this));
+            uint256 daiBorrowedAmount = cDAI.borrowBalanceCurrent(address(this));
+            uint256 ethDaiRate = getEthDaiRate();
+            queryPositionResult memory queryResult = queryPositionResult({
+                  ethDepositAmount: ethDepositAmount,
+                  daiBorrowedAmount: daiBorrowedAmount,
+                  ethDaiRate: ethDaiRate,
+                  leverageLevel: leverageLevel
+            });
+            return queryResult;
       }
 
       /**

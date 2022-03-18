@@ -26,4 +26,12 @@ interface ICERC20 {
        * @return The calculated balance
        */
       function borrowBalanceCurrent(address account) external returns (uint256);
+
+      /**
+       * @notice Get the underlying balance of the `owner`
+       * @dev This also accrues interest in a transaction
+       * @param owner The address of the account to query
+       * @return The amount of underlying owned by `owner`
+       */
+      function balanceOfUnderlying(address owner) external returns (uint256);
 }
