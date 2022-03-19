@@ -3,10 +3,29 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-contract Factory is Pausable {
+contract Factory is Pausable, Ownable {
       event DeployedAddress(address _deployedAddress);
+      mapping(address => address) public addressRecord;
+
+      /**
+       * @notice Set ETHLeverage Address for each address
+       * @param _userAddress user's address
+       * @param _ETHLeverageAddress ETHLeverageAddress that acquired after `deploy` method
+       */
+      function setAddressRecord(address _userAddress, address _ETHLeverageAddress) public onlyOwner {
+            addressRecord[_userAddress] = _ETHLeverageAddress;
+      }
+
+      /**
+       * @notice Get ETHLeverage Address of the user's address
+       * @return ETHLeverage address of the user
+       */
+      function getUserETHLeverageAddress(address _userAddress) public view returns (address) {
+            return addressRecord[_userAddress];
+      }
 
       /**
        * @dev Deploys a contract using `CREATE2`. The address where the

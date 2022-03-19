@@ -113,6 +113,7 @@ contract ETHLeverage {
        * @param _leverageRatio The leverage Ratio that the user preferred
        */
       function openPosition(uint256 _leverageRatio) public payable {
+            require(msg.sender == userAddress, "Incorrect Address");
             /**
              * @notice Mint cEther
              */
@@ -178,6 +179,7 @@ contract ETHLeverage {
        * @notice Close leverage position of the user
        */
       function closePosition() public {
+            require(msg.sender == userAddress, "Incorrect Address");
             /**
              * @notice Get the borrow balance of the user interacting with the contract
              * @dev Reverts if user's DAI balance is insufficient
@@ -211,6 +213,7 @@ contract ETHLeverage {
        * @return A struct type queryPositionResult
        */
       function queryPosition() public returns (queryPositionResult memory) {
+            require(msg.sender == userAddress, "Incorrect Address");
             uint256 ethDepositAmount = cEther.balanceOfUnderlying(address(this));
             uint256 daiBorrowedAmount = cDAI.borrowBalanceCurrent(address(this));
             uint256 ethDaiRate = getEthDaiRate();

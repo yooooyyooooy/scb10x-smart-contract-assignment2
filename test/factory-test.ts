@@ -70,6 +70,13 @@ describe("Factory Contract Test", function () {
       });
 
       describe("Create ethLeverage from factory", function () {
+            it("Should NOT let other accounts call `setAddressRecord` if not the owner", async function () {
+                  const mockAddress = "0x41B5844f4680a8C38fBb695b7F9CFd1F64474a72";
+                  await expect(factory.connect(user).setAddressRecord(user.address, mockAddress)).to.be.reverted;
+
+                  await factory.connect(owner).setAddressRecord(user.address, mockAddress);
+                  expect(await factory.connect(user).getUserETHLeverageAddress(user.address)).to.equal(mockAddress);
+            });
             it("Should let each user create their own ethLeverage contract from Factory", async function () {
                   const ethLeverageAddress = await factory.computeAddressWithDeployer(
                         saltHex,
@@ -82,8 +89,16 @@ describe("Factory Contract Test", function () {
                   const receipt: ContractReceipt = await deployTransaction.wait();
                   const eventData = receipt.events?.find((events) => events.event == "DeployedAddress");
                   expect(ethLeverageAddress).to.equal(eventData?.args?._deployedAddress);
+                  await factory.connect(owner).setAddressRecord(user.address, eventData?.args?._deployedAddress);
+                  console.log(
+                        "User's ETHLeverage contract address",
+                        await factory.connect(user).getUserETHLeverageAddress(user.address),
+                  );
 
-                  ethLeverage = await ethers.getContractAt("ETHLeverage", eventData?.args?._deployedAddress);
+                  ethLeverage = await ethers.getContractAt(
+                        "ETHLeverage",
+                        await factory.connect(user).getUserETHLeverageAddress(user.address),
+                  );
 
                   await expect(() =>
                         ethLeverage.connect(user).openPosition(150 * 1000, {

@@ -27,10 +27,10 @@ describe("ETHLeverage Contract Test", function () {
             daiToken: Contract,
             wethToken: Contract,
             uniswapRouter: Contract;
-      let owner: SignerWithAddress, user: SignerWithAddress;
+      let owner: SignerWithAddress, user: SignerWithAddress, unrelatedUser: SignerWithAddress;
 
       before(async function () {
-            [owner, user] = await ethers.getSigners();
+            [owner, user, unrelatedUser] = await ethers.getSigners();
 
             cEtherToken = await ethers.getContractAt(
                   "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20",
@@ -60,6 +60,13 @@ describe("ETHLeverage Contract Test", function () {
       });
 
       describe("Open Position", function () {
+            it("Should NOT let the user open their leverage position correctly if the contract is not related to them", async function () {
+                  await expect(
+                        ethLeverage.connect(unrelatedUser).openPosition(130 * 1000, {
+                              value: ethers.utils.parseEther("4"),
+                        }),
+                  ).to.be.revertedWith("Incorrect Address");
+            });
             it("Should let the user open their leverage position correctly", async function () {
                   await expect(() =>
                         ethLeverage.connect(user).openPosition(130 * 1000, {
@@ -69,13 +76,23 @@ describe("ETHLeverage Contract Test", function () {
             });
       });
       describe("Querying Position", function () {
+            it("Should NOT let the user open their leverage position correctly if the contract is not related to them", async function () {
+                  await expect(ethLeverage.connect(unrelatedUser).queryPosition()).to.be.revertedWith(
+                        "Incorrect Address",
+                  );
+            });
             it("Should let the user query their leverage position correctly", async function () {
                   const results = await ethLeverage.connect(user).callStatic.queryPosition();
                   expect(parseInt(results.leverageLevel)).to.equal(30000);
             });
       });
       describe("Close Position", function () {
-            it("Should NOT let the user close their leverage position correctly if they have sufficient DAI", async function () {
+            it("Should NOT let the user close their leverage position correctly if the contract is not related to them", async function () {
+                  await expect(ethLeverage.connect(unrelatedUser).closePosition()).to.be.revertedWith(
+                        "Incorrect Address",
+                  );
+            });
+            it("Should NOT let the user close their leverage position correctly if they have insufficient DAI", async function () {
                   await daiToken.connect(user).transfer(owner.address, daiToken.balanceOf(user.address));
                   await expect(ethLeverage.connect(user).closePosition()).to.be.revertedWith(
                         "Insufficient amount of DAI in the wallet",
