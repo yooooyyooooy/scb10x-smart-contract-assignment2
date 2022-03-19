@@ -61,8 +61,6 @@ describe("ETHLeverage Contract Test", function () {
 
       describe("Open Position", function () {
             it("Should let the user open their leverage position correctly", async function () {
-                  console.log(typeof ethLeverage);
-
                   await expect(() =>
                         ethLeverage.connect(user).openPosition(130 * 1000, {
                               value: ethers.utils.parseEther("4"),
