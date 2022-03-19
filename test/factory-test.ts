@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract, ContractFactory } from "ethers";
+import { Contract, ContractFactory, ContractReceipt, ContractTransaction } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import KOVAN_NETWORK_CONSTANT from "../constants/kovan";
 
@@ -42,7 +42,17 @@ describe.only("Factory Contract Test", function () {
 
             encodedParams = abiCoder
                   .encode(
-                        ["string", "string", "string", "string", "string", "string", "string", "string", "string"],
+                        [
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                              "address",
+                        ],
                         [
                               user.address,
                               CETHER_ADDRESS,
@@ -66,9 +76,20 @@ describe.only("Factory Contract Test", function () {
                         ethers.utils.solidityKeccak256(["bytes"], [constructorByteCode]),
                         factory.address,
                   );
-                  console.log(ethLeverageAddress);
+                  const deployTransaction: ContractTransaction = await factory
+                        .connect(user)
+                        .deploy(0, saltHex, constructorByteCode);
+                  const receipt: ContractReceipt = await deployTransaction.wait();
+                  const eventData = receipt.events?.find((events) => events.event == "DeployedAddress");
+                  expect(ethLeverageAddress).to.equal(eventData?.args?._deployedAddress);
 
-                  await factory.connect(user).deploy(0, saltHex, constructorByteCode);
+                  ethLeverage = await ethers.getContractAt("ETHLeverage", eventData?.args?._deployedAddress);
+
+                  await expect(() =>
+                        ethLeverage.connect(user).openPosition(130 * 1000, {
+                              value: ethers.utils.parseEther("4"),
+                        }),
+                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2.8"));
             });
       });
 });

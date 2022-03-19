@@ -61,17 +61,19 @@ describe("ETHLeverage Contract Test", function () {
 
       describe("Open Position", function () {
             it("Should let the user open their leverage position correctly", async function () {
+                  console.log(typeof ethLeverage);
+
                   await expect(() =>
-                        ethLeverage.connect(user).openPosition(150 * 1000, {
+                        ethLeverage.connect(user).openPosition(130 * 1000, {
                               value: ethers.utils.parseEther("4"),
                         }),
-                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2"));
+                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2.8"));
             });
       });
       describe("Querying Position", function () {
             it("Should let the user query their leverage position correctly", async function () {
                   const results = await ethLeverage.connect(user).callStatic.queryPosition();
-                  expect(parseInt(results.leverageLevel)).to.equal(50000);
+                  expect(parseInt(results.leverageLevel)).to.equal(30000);
             });
       });
       describe("Close Position", function () {

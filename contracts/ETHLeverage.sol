@@ -22,7 +22,7 @@ contract ETHLeverage {
       using SafeERC20 for IERC20;
 
       uint256 private hundredPercent = 100 * 1000;
-      uint256 private marginError = 5 * 1000;
+      uint256 private marginError = 3 * 1000;
       uint256 private leverageLevel;
 
       address private userAddress;
@@ -116,6 +116,8 @@ contract ETHLeverage {
             /**
              * @notice Mint cEther
              */
+            console.log("here");
+            console.log(address(cEther));
             cEther.mint{value: msg.value}();
 
             /**
@@ -128,6 +130,7 @@ contract ETHLeverage {
             require(errors[0] == 0, "Cannot enter the market.");
 
             uint256 ethDaiRate = getEthDaiRate();
+            console.log(ethDaiRate);
 
             /**
              * @notice Borrow DAI based on the user's leveragae ratio
@@ -135,7 +138,9 @@ contract ETHLeverage {
              */
             uint256 daiBorrowAmountInWei = (msg.value * (_leverageRatio + marginError - hundredPercent) * ethDaiRate) /
                   hundredPercent;
+            console.log(daiBorrowAmountInWei / 10**18);
             uint256 status = cDAI.borrow(daiBorrowAmountInWei);
+            console.log(status);
             require(status == 0, "Failed to borrow DAI");
 
             /**

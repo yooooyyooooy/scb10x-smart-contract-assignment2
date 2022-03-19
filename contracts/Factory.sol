@@ -27,7 +27,7 @@ contract Factory is Pausable {
             bytes memory code
       ) public whenNotPaused {
             address deployedAddress = Create2.deploy(value, salt, code);
-            console.log(deployedAddress);
+            emit DeployedAddress(deployedAddress);
       }
 
       /**
