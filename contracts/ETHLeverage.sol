@@ -143,7 +143,10 @@ contract ETHLeverage {
             /**
              * @notice Approve DAI token to swaprouter and swap the borrowed DAI to WETH
              */
-            DAI.safeApprove(address(swapRouter), daiBorrowAmountInWei);
+            uint256 currentAllowanceToRouter = DAI.allowance(address(this), address(swapRouter));
+            if (daiBorrowAmountInWei - currentAllowanceToRouter > 0) {
+                  DAI.safeIncreaseAllowance(address(swapRouter), daiBorrowAmountInWei - currentAllowanceToRouter);
+            }
 
             ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
                   tokenIn: address(DAI),
@@ -169,7 +172,10 @@ contract ETHLeverage {
              * @notice Repay the remaining dai to compound if there are any dai left
              */
             if (DAI.balanceOf(address(this)) > 0) {
-                  DAI.safeApprove(address(cDAI), DAI.balanceOf(address(this)));
+                  uint256 currentAllowanceToCDAI = DAI.allowance(address(this), address(cDAI));
+                  if (DAI.balanceOf(address(this)) - currentAllowanceToCDAI > 0) {
+                        DAI.safeIncreaseAllowance(address(cDAI), DAI.balanceOf(address(this)) - currentAllowanceToCDAI);
+                  }
                   uint256 repayStatus = cDAI.repayBorrow(DAI.balanceOf(address(this)));
                   require(repayStatus == 0, "Failed to repay DAI.");
             }
@@ -191,7 +197,13 @@ contract ETHLeverage {
 		@notice Transfer DAI from user to this contract and repay the borrowed DAI
 		 */
             DAI.safeTransferFrom(msg.sender, address(this), borrowBalance);
+
+            uint256 currentAllowanceToCDAI = DAI.allowance(address(this), address(cDAI));
+            if (DAI.balanceOf(address(this)) - currentAllowanceToCDAI > 0) {
+                  DAI.safeIncreaseAllowance(address(cDAI), DAI.balanceOf(address(this)) - currentAllowanceToCDAI);
+            }
             DAI.approve(address(cDAI), borrowBalance);
+
             uint256 repayStatus = cDAI.repayBorrow(borrowBalance);
             require(repayStatus == 0, "Failed to repay DAI.");
 
