@@ -67,15 +67,16 @@ async function main() {
       const eventData = receipt.events?.find((events) => events.event == "DeployedAddress");
       console.log("ETHLeverage deployed at address:", eventData?.args?._deployedAddress);
       await factory.connect(deployer).setAddressRecord(deployer.address, eventData?.args?._deployedAddress);
+      console.log(await factory.connect(deployer).getUserETHLeverageAddress(deployer.address));
 
-      const ethLeverage = await ethers.getContractAt(
-            "ETHLeverage",
-            await factory.connect(deployer).getUserETHLeverageAddress(deployer.address),
-      );
-      console.log(
-            "User's ETHLeverage contract address",
-            await factory.connect(deployer).getUserETHLeverageAddress(deployer.address),
-      );
+      // const ethLeverage = await ethers.getContractAt(
+      //       "ETHLeverage",
+      //       await factory.connect(deployer).getUserETHLeverageAddress(deployer.address),
+      // );
+      // console.log(
+      //       "User's ETHLeverage contract address",
+      //       await factory.connect(deployer).getUserETHLeverageAddress(deployer.address),
+      // );
 }
 
 // We recommend this pattern to be able to use async/await everywhere

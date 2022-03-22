@@ -9,7 +9,7 @@ import KOVAN_NETWORK_CONSTANT from "../constants/kovan";
  * @author Ratchanon Wattanataweekul
  */
 
-describe("Factory Contract Test", function () {
+describe.only("Factory Contract Test", function () {
       const {
             CETHER_ADDRESS,
             CDAI_ADDRESS,
@@ -94,17 +94,22 @@ describe("Factory Contract Test", function () {
                         "User's ETHLeverage contract address",
                         await factory.connect(user).getUserETHLeverageAddress(user.address),
                   );
+                  console.log(
+                        "ethleverage Address from query",
+                        await factory.connect(user).getUserETHLeverageAddress(user.address),
+                  );
 
                   ethLeverage = await ethers.getContractAt(
                         "ETHLeverage",
                         await factory.connect(user).getUserETHLeverageAddress(user.address),
                   );
+                  console.log("ethleverage Address", ethLeverage.address);
 
                   await expect(() =>
-                        ethLeverage.connect(user).openPosition(150 * 1000, {
+                        ethLeverage.connect(user).openPosition(130 * 1000, {
                               value: ethers.utils.parseEther("4"),
                         }),
-                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2"));
+                  ).to.changeEtherBalance(user, ethers.utils.parseEther("-2.8"));
             });
       });
 });

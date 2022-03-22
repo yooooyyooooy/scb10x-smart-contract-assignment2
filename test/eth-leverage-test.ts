@@ -9,7 +9,7 @@ import KOVAN_NETWORK_CONSTANT from "../constants/kovan";
  * @author Ratchanon Wattanataweekul
  */
 
-describe.only("ETHLeverage Contract Test", function () {
+describe("ETHLeverage Contract Test", function () {
       const {
             CETHER_ADDRESS,
             CDAI_ADDRESS,
