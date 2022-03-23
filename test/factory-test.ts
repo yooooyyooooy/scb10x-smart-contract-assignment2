@@ -90,20 +90,11 @@ describe.only("Factory Contract Test", function () {
                   const eventData = receipt.events?.find((events) => events.event == "DeployedAddress");
                   expect(ethLeverageAddress).to.equal(eventData?.args?._deployedAddress);
                   await factory.connect(owner).setAddressRecord(user.address, eventData?.args?._deployedAddress);
-                  console.log(
-                        "User's ETHLeverage contract address",
-                        await factory.connect(user).getUserETHLeverageAddress(user.address),
-                  );
-                  console.log(
-                        "ethleverage Address from query",
-                        await factory.connect(user).getUserETHLeverageAddress(user.address),
-                  );
 
                   ethLeverage = await ethers.getContractAt(
                         "ETHLeverage",
                         await factory.connect(user).getUserETHLeverageAddress(user.address),
                   );
-                  console.log("ethleverage Address", ethLeverage.address);
 
                   await expect(() =>
                         ethLeverage.connect(user).openPosition(130 * 1000, {
